@@ -47,7 +47,7 @@ struct SplashView: View {
                 Text("Éclat Privé")
                     .font(.custom("Baskerville", size: 48)) // 가늘고 우아한 명조체
                     .fontWeight(.regular)
-                    // 짙은 차콜/딥 인디고 색상 (완전 검은색보다 훨씬 고급스러움)
+                // 짙은 차콜/딥 인디고 색상 (완전 검은색보다 훨씬 고급스러움)
                     .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.2))
                 
                 // 🌟 서브 타이틀
@@ -99,72 +99,75 @@ struct MainTabView: View {
 struct HomeView: View {
     @Query private var geckos: [Gecko]
     @State private var showingQuickFeed = false
+    private var isFeedingDay: Bool {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        return weekday == 3 || weekday == 5 || weekday == 7
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
                     
-                    // 카드 1: 투데이 알림
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("할 일 1건 >")
-                                .font(.subheadline)
-                                .foregroundColor(.indigo)
-                                .bold()
-                            Text("오늘 피딩 예정인 개체가 있습니다 🦗")
-                                .font(.headline)
+                    // 🌟 1. 업그레이드된 스마트 투데이 알림 (화, 목, 토 인식!)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(isFeedingDay ? "할 일 1건 >" : "휴식일 🌴")
+                                .font(.caption)
+                                .foregroundColor(isFeedingDay ? .blue : .secondary)
+                            
+                            Spacer()
+                            
+                            if isFeedingDay {
+                                Image(systemName: "bell.fill")
+                                    .foregroundColor(.red)
+                            }
                         }
-                        Spacer()
-                        Image(systemName: "bell.badge.fill")
-                            .foregroundColor(.red)
-                            .font(.title2)
+                        
+                        Text(isFeedingDay ? "오늘 피딩 예정인 개체가 있습니다 🦗" : "오늘은 피딩을 쉬어가는 날입니다.")
+                            .font(.headline)
+                            .foregroundColor(.primary)
                     }
                     .padding()
                     .background(Color(UIColor.secondarySystemGroupedBackground))
                     .cornerRadius(16)
                     
-                    let sheddingSoonGeckos = geckos.filter { $0.daysUntilShedding <= 3 }
-                            if !sheddingSoonGeckos.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    let sheddingSoonGeckos = geckos.filter { $0.daysUntilShedding <= 3 }
-                                            if !sheddingSoonGeckos.isEmpty {
-                                                VStack(alignment: .leading, spacing: 12) {
-                                                    HStack {
-                                                        Text("탈피 임박 알림 🐍")
-                                                            .font(.headline)
-                                                        Spacer()
-                                                        Image(systemName: "drop.fill")
-                                                            .foregroundColor(.cyan)
-                                                    }
-                                                    Text("습도를 70~80%로 높여주세요!")
-                                                        .font(.caption)
-                                                        .foregroundColor(.secondary)
-                                                    
-                                                    Divider()
-                                                    
-                                                    // 해당되는 개체들 리스트 쫙 뽑아주기
-                                                    ForEach(sheddingSoonGeckos) { gecko in
-                                                        HStack {
-                                                            Text(gecko.name).font(.subheadline).bold()
-                                                            Spacer()
-                                                            let dDay = gecko.daysUntilShedding
-                                                            Text(dDay > 0 ? "D-\(dDay)" : (dDay == 0 ? "오늘 예정" : "D+\(abs(dDay)) (지연)"))
-                                                                .font(.subheadline)
-                                                                .bold()
-                                                                .foregroundColor(dDay <= 0 ? .red : .orange)
-                                                        }
-                                                    }
-                                                }
-                                                .padding()
-                                                .background(Color(UIColor.secondarySystemGroupedBackground))
-                                                .cornerRadius(16)
-                                            }
-                                }
-                                .padding()
-                                .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .cornerRadius(16)
+                    
+                    // 🐍 2. 탈피 임박 알림
+                    // 🌟 3일 이내로 남았거나, 지연되었더라도 14일 이내인 개체만 알림 띄우기!
+                    let sheddingSoonGeckos = geckos.filter { $0.daysUntilShedding <= 3 && $0.daysUntilShedding >= -14 }
+                    if !sheddingSoonGeckos.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("탈피 임박 알림 🐍")
+                                    .font(.headline)
+                                Spacer()
+                                Image(systemName: "drop.fill")
+                                    .foregroundColor(.cyan)
                             }
+                            
+                            Text("습도를 70~80%로 높여주세요!")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Divider()
+                            
+                            ForEach(sheddingSoonGeckos) { gecko in
+                                HStack {
+                                    Text(gecko.name).font(.subheadline).bold()
+                                    Spacer()
+                                    let dDay = gecko.daysUntilShedding
+                                    Text(dDay > 0 ? "D-\(dDay)" : (dDay == 0 ? "오늘 예정" : "D+\(abs(dDay)) (지연)"))
+                                        .font(.subheadline)
+                                        .bold()
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                        .cornerRadius(16)
+                    }
                     
                     // 🌟 카드 2: 사육방 요약 현황 (클릭하면 상세 화면으로 이동!)
                     NavigationLink(destination: MorphStatisticsView(geckos: geckos)) {
@@ -265,7 +268,8 @@ struct GeckoListView: View {
     @Query(sort: \Gecko.name) private var geckos: [Gecko]
     @Environment(\.modelContext) private var modelContext
     @State private var showingAddGecko = false
-
+    @State private var geckoToEdit: Gecko? = nil
+    
     var body: some View {
         NavigationStack {
             List {
@@ -274,7 +278,7 @@ struct GeckoListView: View {
                         HStack(spacing: 15) {
                             GeckoProfileImage(imageData: gecko.profileImageData)
                                 .frame(width: 50, height: 50)
-
+                            
                             VStack(alignment: .leading) {
                                 Text(gecko.name)
                                     .font(.headline)
@@ -284,6 +288,14 @@ struct GeckoListView: View {
                             }
                         }
                         .padding(.vertical, 5)
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            geckoToEdit = gecko
+                        } label: {
+                            Label("수정", systemImage: "pencil")
+                        }
+                        .tint(.blue)
                     }
                 }
                 .onDelete(perform: deleteGecko)
@@ -299,9 +311,12 @@ struct GeckoListView: View {
             .sheet(isPresented: $showingAddGecko) {
                 AddGeckoView()
             }
+            .sheet(item: $geckoToEdit) { gecko in
+                AddGeckoView(geckoToEdit: gecko)
+            }
         }
     }
-
+    
     private func deleteGecko(offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(geckos[index])
@@ -315,7 +330,7 @@ struct IncubatorView: View {
     @Query(sort: \EggRecord.expectedHatchDate) private var eggs: [EggRecord]
     @Environment(\.modelContext) private var modelContext
     @State private var showingAddEgg = false
-
+    
     var body: some View {
         NavigationStack {
             List {
@@ -345,7 +360,7 @@ struct IncubatorView: View {
                                 Text(dDay > 0 ? "D-\(dDay)" : (dDay == 0 ? "D-Day" : "D+\(abs(dDay))"))
                                     .font(.title2)
                                     .bold()
-                                    // 5일 이내로 남으면 빨간색으로 경고!
+                                // 5일 이내로 남으면 빨간색으로 경고!
                                     .foregroundColor(dDay <= 5 ? .red : .indigo)
                                 Text("해칭 예정")
                                     .font(.caption2)
@@ -379,7 +394,7 @@ struct IncubatorView: View {
             }
         }
     }
-
+    
     private func deleteEgg(offsets: IndexSet) {
         let incubatingEggs = eggs.filter { $0.status == "인큐베이팅" }
         for index in offsets {
@@ -395,7 +410,7 @@ struct StatisticsView: View {
     
     // 현재 그래프를 보고 있는 개체를 기억하는 변수
     @State private var selectedGecko: Gecko?
-
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -416,11 +431,11 @@ struct StatisticsView: View {
                     .cornerRadius(12)
                     .padding(.horizontal)
                     .padding(.top, 10)
-
+                    
                     if let gecko = selectedGecko {
                         // 체중이 0보다 큰 일지만 날짜순으로 모아줍니다.
                         let logs = gecko.dailyLogs.filter { $0.emptyWeight > 0 }.sorted { $0.date < $1.date }
-
+                        
                         if logs.isEmpty {
                             Spacer()
                             Text("체중 기록이 없습니다.\n사육 일지에서 공복 체중을 기록해 주세요!")
@@ -433,7 +448,7 @@ struct StatisticsView: View {
                                 Text("\(gecko.name)의 성장 그래프 📈")
                                     .font(.headline)
                                     .padding(.bottom, 10)
-
+                                
                                 // 애플의 마법! Chart 블록 하나면 끝납니다.
                                 Chart {
                                     ForEach(logs, id: \.self) { log in
@@ -444,7 +459,7 @@ struct StatisticsView: View {
                                         )
                                         .foregroundStyle(Color.indigo)
                                         .interpolationMethod(.monotone) // 선을 부드러운 곡선으로 만들어줌!
-
+                                        
                                         // 날짜마다 동그란 점 찍기
                                         PointMark(
                                             x: .value("날짜", log.date),
@@ -462,7 +477,7 @@ struct StatisticsView: View {
                             .background(Color(UIColor.secondarySystemGroupedBackground))
                             .cornerRadius(16)
                             .padding()
-
+                            
                             Spacer()
                         }
                     } else {
@@ -492,10 +507,6 @@ struct SettingsView: View {
     }
 }
 
-// ---------------------------------------------------------
-// 👇 아래는 우리가 기존에 완벽하게 세팅해둔 기능들입니다 (변경 없음!)
-// ---------------------------------------------------------
-
 struct GeckoProfileImage: View {
     var imageData: Data?
     var body: some View {
@@ -516,32 +527,96 @@ struct GeckoDetailView: View {
     @Bindable var gecko: Gecko
     @State private var selectedItem: PhotosPickerItem? = nil
     @State private var showingAddLog = false
-    
+    @State private var showFamilyTree = false
+    @State private var logToEdit: DailyLog? = nil
+
+    private var hasParentInfo: Bool {
+            // 1. 아빠 정보: 사진이 '빈 껍데기'가 아니거나, 모프 칸에 진짜 글자가 있을 때만 인정!
+            let hasSireImage = gecko.sireImageData != nil && gecko.sireImageData?.isEmpty == false
+            let hasSireText = gecko.sireMorph.trimmingCharacters(in: .whitespacesAndNewlines) != ""
+            
+            // 2. 엄마 정보: 사진이 '빈 껍데기'가 아니거나, 모프 칸에 진짜 글자가 있을 때만 인정!
+            let hasDamImage = gecko.damImageData != nil && gecko.damImageData?.isEmpty == false
+            let hasDamText = gecko.damMorph.trimmingCharacters(in: .whitespacesAndNewlines) != ""
+            
+            // 넷 중 하나라도 '진짜 데이터'가 있으면 인스타 띠 마법 ON!
+            return hasSireImage || hasSireText || hasDamImage || hasDamText
+        }
+
     var body: some View {
         VStack(spacing: 0) {
+            // 1. 프로필 이미지 & 기본 정보 영역
             VStack {
-                PhotosPicker(selection: $selectedItem, matching: .images, photoLibrary: .shared()) {
-                    if let imageData = gecko.profileImageData, let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage).resizable().scaledToFill().frame(width: 100, height: 100).clipShape(Circle())
-                            .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 2))
-                    } else {
-                        ZStack {
-                            Circle().fill(Color.secondary.opacity(0.1)).frame(width: 100, height: 100)
-                            Text("🦎").font(.system(size: 50))
+                ZStack {
+                    ZStack {
+                        if let imageData = gecko.profileImageData, let uiImage = UIImage(data: imageData) {
+                            Image(uiImage: uiImage).resizable().scaledToFill().frame(width: 100, height: 100).clipShape(Circle())
+                        } else {
+                            ZStack {
+                                Circle().fill(Color.secondary.opacity(0.1)).frame(width: 100, height: 100)
+                                Text("🦎").font(.system(size: 50))
+                            }
                         }
-                        .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 2))
-                        .overlay(
-                            Image(systemName: "camera.circle.fill").resizable().frame(width: 28, height: 28)
-                                .foregroundColor(.blue).background(Circle().fill(Color.white)).offset(x: 35, y: 35)
-                        )
+                    }
+                    .contentShape(Circle())
+                    .overlay(
+                        Group {
+                            if hasParentInfo {
+                                Circle().stroke(LinearGradient(colors: [.yellow, .orange, .pink, .purple], startPoint: .bottomLeading, endPoint: .topTrailing), lineWidth: 4)
+                            } else {
+                                Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 2)
+                            }
+                        }
+                    )
+                    .onLongPressGesture(minimumDuration: 1.0) {
+                        if hasParentInfo {
+                            let generator = UIImpactFeedbackGenerator(style: .heavy)
+                            generator.impactOccurred()
+                            showFamilyTree = true
+                        }
+                    }
+
+                    PhotosPicker(selection: $selectedItem, matching: .images, photoLibrary: .shared()) {
+                        Image(systemName: "camera.circle.fill")
+                            .resizable()
+                            .frame(width: 28, height: 28)
+                            .foregroundColor(.blue)
+                            .background(Circle().fill(Color.white))
+                    }
+                    .offset(x: 35, y: 35)
+                    .onChange(of: selectedItem) { _, newItem in
+                        Task { if let data = try? await newItem?.loadTransferable(type: Data.self) { gecko.profileImageData = data } }
                     }
                 }
-                .onChange(of: selectedItem) { _, newItem in
-                    Task { if let data = try? await newItem?.loadTransferable(type: Data.self) { gecko.profileImageData = data } }
+                .sheet(isPresented: $showFamilyTree) {
+                    FamilyTreeView(gecko: gecko)
+                        .presentationDetents([.fraction(0.65), .large])
                 }
+                .padding(.vertical)
+
+                // 해칭일
+                VStack(spacing: 4) {
+                    Text("해칭일: \(gecko.hatchDate, format: .dateTime.year().month().day())")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    let daysOld = Calendar.current.dateComponents([.day], from: gecko.hatchDate, to: Date()).day ?? 0
+                    Text("생후 \(daysOld)일차")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .padding(.top, 1)
             }
             .padding(.vertical)
-            
+            VStack(spacing: 2) {
+                Text("🔍 데이터 팩트 체크")
+                    .bold()
+                Text("아빠 모프: [\(gecko.sireMorph)] / 사진: \(gecko.sireImageData == nil ? "없음" : "있음(\(gecko.sireImageData!.count) bytes)")")
+                Text("엄마 모프: [\(gecko.damMorph)] / 사진: \(gecko.damImageData == nil ? "없음" : "있음(\(gecko.damImageData!.count) bytes)")")
+            }
+            .font(.caption2)
+            .foregroundColor(.red)
+            .padding(.bottom, 10)
+            // 2. 일지 목록 영역
             List {
                 ForEach(gecko.dailyLogs.sorted(by: { $0.date > $1.date })) { log in
                     VStack(alignment: .leading, spacing: 7) {
@@ -578,22 +653,37 @@ struct GeckoDetailView: View {
                         .font(.caption).foregroundColor(.secondary)
                     }
                     .padding(.vertical, 5)
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            logToEdit = log
+                        } label: {
+                            Label("수정", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                    }
                 }
                 .onDelete(perform: deleteLog)
             }
+        } // 👈 화면 UI (body) 전체가 닫히는 곳
+        
+        .sheet(item: $logToEdit) { selectedLog in
+            EditDailyLogView(log: selectedLog)
         }
         .navigationTitle(gecko.name)
-        #if os(iOS)
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
+#endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { showingAddLog = true }) { Image(systemName: "square.and.pencil") }
             }
         }
-        .sheet(isPresented: $showingAddLog) { AddDailyLogView(gecko: gecko) }
-    }
-    
+        .sheet(isPresented: $showingAddLog) {
+            AddDailyLogView(gecko: gecko)
+        }
+    } // 👈 var body가 닫히는 곳
+
+    // 👈 삭제 기능 (다시 집 안으로 무사히 들어왔습니다!)
     private func deleteLog(offsets: IndexSet) {
         let sortedLogs = gecko.dailyLogs.sorted(by: { $0.date > $1.date })
         for index in offsets {
@@ -610,10 +700,24 @@ struct AddGeckoView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
     
+    var geckoToEdit: Gecko? = nil
+    
     @State private var name = ""
     @State private var morph = ""
     @State private var gender: Gender = .unsexed
     @State private var hatchDate = Date() // 🌟 해칭일 입력 변수
+    
+    // 🧬 부모(혈통) 정보를 임시로 담아둘 보관함 추가!
+    @State private var sireMorph: String = "" // 아빠 모프
+    @State private var sireName: String = ""
+    @State private var sireItem: PhotosPickerItem? = nil
+    @State private var sireImageData: Data? = nil
+    
+    @State private var damMorph: String = ""  // 엄마 모프
+    @State private var damName: String = ""
+    @State private var damItem: PhotosPickerItem? = nil
+    @State private var damImageData: Data? = nil
+    
     
     var body: some View {
         NavigationStack {
@@ -627,17 +731,111 @@ struct AddGeckoView: View {
                 }
                 // 🌟 해칭일 달력 추가!
                 DatePicker("해칭일 (나이 계산용)", selection: $hatchDate, displayedComponents: .date)
+                // 💎 프리미엄 혈통(부모) 정보 입력 섹션 (애플 순정 스타일)
+                Section(header: Text("혈통 (부모 개체) 정보")) {
+                    
+                    // 💙 아빠 (Sire) 정보란
+                    HStack(alignment: .center, spacing: 16) {
+                        // 1. 프로필 사진 (크기를 애플 기본 규격인 60으로 키워서 시원하게!)
+                        PhotosPicker(selection: $sireItem, matching: .images, photoLibrary: .shared()) {
+                            if let data = sireImageData, let uiImage = UIImage(data: data) {
+                                Image(uiImage: uiImage).resizable().scaledToFill().frame(width: 60, height: 60).clipShape(Circle())
+                            } else {
+                                Image(systemName: "photo.circle.fill").resizable().frame(width: 60, height: 60).foregroundColor(.blue.opacity(0.8))
+                            }
+                        }
+                        .buttonStyle(.borderless) // 🌟 여백 터치 버그 완벽 차단!
+                        .onChange(of: sireItem) { _, newItem in
+                            Task { if let data = try? await newItem?.loadTransferable(type: Data.self) { sireImageData = data } }
+                        }
+                        
+                        // 2. 입력칸 (투박한 네모 박스를 없애고 애플 특유의 얇은 선 구분 적용!)
+                        VStack(spacing: 0) {
+                            TextField("아빠 이름 (예: 레오)", text: $sireName)
+                                .padding(.vertical, 12)
+                            
+                            Divider() // 🌟 애플 감성의 핵심! 얇고 세련된 구분선
+                            
+                            TextField("아빠 모프 (예: 릴리화이트)", text: $sireMorph)
+                                .padding(.vertical, 12)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // ❤️ 엄마 (Dam) 정보란
+                    HStack(alignment: .center, spacing: 16) {
+                        // 1. 프로필 사진
+                        PhotosPicker(selection: $damItem, matching: .images, photoLibrary: .shared()) {
+                            if let data = damImageData, let uiImage = UIImage(data: data) {
+                                Image(uiImage: uiImage).resizable().scaledToFill().frame(width: 60, height: 60).clipShape(Circle())
+                            } else {
+                                Image(systemName: "photo.circle.fill").resizable().frame(width: 60, height: 60).foregroundColor(.pink.opacity(0.8))
+                            }
+                        }
+                        .buttonStyle(.borderless) // 🌟 여백 터치 버그 완벽 차단!
+                        .onChange(of: damItem) { _, newItem in
+                            Task { if let data = try? await newItem?.loadTransferable(type: Data.self) { damImageData = data } }
+                        }
+                        
+                        // 2. 입력칸 (투박한 네모 박스를 없애고 애플 특유의 얇은 선 구분 적용!)
+                        VStack(spacing: 0) {
+                            TextField("엄마 이름 (예: 루시)", text: $damName)
+                                .padding(.vertical, 12)
+                            
+                            Divider() // 🌟 애플 감성의 핵심! 얇고 세련된 구분선
+                            
+                            TextField("엄마 모프 (예: 트라이컬러)", text: $damMorph)
+                                .padding(.vertical, 12)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             .navigationTitle("새 개체 등록")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("저장") {
-                        let newGecko = Gecko(name: name, morph: morph, gender: gender, hatchDate: hatchDate) // 해칭일 저장
-                        modelContext.insert(newGecko)
+                        if let gecko = geckoToEdit {
+                            // 🌟 [수정 모드] 기존 개체의 정보만 덮어씌웁니다!
+                            gecko.name = name
+                            gecko.morph = morph
+                            // 만약 아래 줄에서 에러가 나면, imageData라는 이름 대신 브리더님이 쓰신 변수명으로 바꾸거나 이 줄을 지워주세요!
+                            // gecko.profileImageData = imageData
+                            
+                            gecko.sireName = sireName
+                            gecko.sireMorph = sireMorph
+                            gecko.sireImageData = sireImageData
+                            gecko.damName = damName
+                            gecko.damMorph = damMorph
+                            gecko.damImageData = damImageData
+                        } else {
+                            // 🌟 [새로 등록 모드] 기존 코드 그대로!
+                            let newGecko = Gecko(name: name, morph: morph, gender: gender, hatchDate: hatchDate)
+                            newGecko.sireMorph = sireMorph
+                            newGecko.sireImageData = sireImageData
+                            newGecko.damMorph = damMorph
+                            newGecko.damImageData = damImageData
+                            newGecko.sireName = sireName
+                            newGecko.damName = damName
+                            modelContext.insert(newGecko)
+                        }
                         dismiss()
                     }
                 }
+            }
+        }
+        .onAppear {
+            if let gecko = geckoToEdit {
+                name = gecko.name
+                morph = gecko.morph
+                sireName = gecko.sireName
+                sireMorph = gecko.sireMorph
+                sireImageData = gecko.sireImageData
+                
+                damName = gecko.damName
+                damMorph = gecko.damMorph
+                damImageData = gecko.damImageData
             }
         }
     }
@@ -659,7 +857,7 @@ struct AddDailyLogView: View {
     @State private var defecation: Bool = false
     @State private var isCleaned: Bool = false
     @State private var sheddingStatus = "없음" // 🌟 탈피 상태 저장용
-        let sheddingOptions = ["없음", "징후 보임", "탈피 완료", "탈피 부전"]
+    let sheddingOptions = ["없음", "징후 보임", "탈피 완료", "탈피 부전"]
     var body: some View {
         NavigationStack {
             Form {
@@ -706,28 +904,28 @@ struct AddDailyLogView: View {
                 }
             }
             .navigationTitle("일지 작성")
-            #if os(iOS)
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("저장") {
                         let finalFoodType = selectedFoods.sorted().joined(separator: ", ")
                         gecko.dailyLogs.append(DailyLog(
-                                                date: date,
-                                                emptyWeight: Double(emptyWeightText) ?? 0.0,
-                                                afterWeight: Double(afterWeightText) ?? 0.0,
-                                                foodType: finalFoodType,
-                                                foodAmount: Double(foodAmountText) ?? 0.0,
-                                                foodMixRatio: selectedFoods.count >= 2 ? foodMixRatio : "",
-                                                feedingMethod: feedingMethod,
-                                                amTemp: amTemp,
-                                                amHumid: amHumid,
-                                                defecation: defecation,
-                                                isCleaned: isCleaned,
-                                                sheddingStatus: sheddingStatus // 🌟 우리가 만든 탈피 상태 추가!
-                                            ))
+                            date: date,
+                            emptyWeight: Double(emptyWeightText) ?? 0.0,
+                            afterWeight: Double(afterWeightText) ?? 0.0,
+                            foodType: finalFoodType,
+                            foodAmount: Double(foodAmountText) ?? 0.0,
+                            foodMixRatio: selectedFoods.count >= 2 ? foodMixRatio : "",
+                            feedingMethod: feedingMethod,
+                            amTemp: amTemp,
+                            amHumid: amHumid,
+                            defecation: defecation,
+                            isCleaned: isCleaned,
+                            sheddingStatus: sheddingStatus // 🌟 우리가 만든 탈피 상태 추가!
+                        ))
                         dismiss()
                     }
                 }
@@ -826,9 +1024,9 @@ struct QuickFeedView: View {
                 }
             }
             .navigationTitle("일괄 피딩 ⚡")
-            #if os(iOS)
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { dismiss() }
@@ -852,19 +1050,19 @@ struct QuickFeedView: View {
         // 선택된 '모든' 개체들의 가방을 열어서 똑같은 일지를 하나씩 넣어줍니다.
         for gecko in selectedGeckos {
             let newLog = DailyLog(
-                                date: date,
-                                emptyWeight: 0.0,
-                                afterWeight: 0.0,
-                                foodType: finalFoodType,
-                                foodAmount: amount,
-                                foodMixRatio: selectedFoods.count >= 2 ? foodMixRatio : "",
-                                feedingMethod: feedingMethod,
-                                amTemp: 0.0,
-                                amHumid: 0.0,
-                                defecation: false,
-                                isCleaned: false,
-                                sheddingStatus: "없음" // 🌟 일괄 피딩이므로 탈피 상태는 기본값("없음")으로 패스!
-                            )
+                date: date,
+                emptyWeight: 0.0,
+                afterWeight: 0.0,
+                foodType: finalFoodType,
+                foodAmount: amount,
+                foodMixRatio: selectedFoods.count >= 2 ? foodMixRatio : "",
+                feedingMethod: feedingMethod,
+                amTemp: 0.0,
+                amHumid: 0.0,
+                defecation: false,
+                isCleaned: false,
+                sheddingStatus: "없음" // 🌟 일괄 피딩이므로 탈피 상태는 기본값("없음")으로 패스!
+            )
             gecko.dailyLogs.append(newLog)
         }
         dismiss()
@@ -909,9 +1107,9 @@ struct MorphStatisticsView: View {
             }
         }
         .navigationTitle("사육방 상세 현황")
-        #if os(iOS)
+#if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
+#endif
     }
 }
 
@@ -945,19 +1143,27 @@ struct AddEggView: View {
                 }
             }
             .navigationTitle("새 알 등록 🥚")
-            #if os(iOS)
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("취소") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("저장") {
-                        let newEgg = EggRecord(sireName: sireName, damName: damName, layDate: layDate, expectedHatchDate: expectedHatchDate)
-                        modelContext.insert(newEgg)
-                        dismiss()
+                        // 🚨 여기에 Gecko(도마뱀)가 아니라 Egg(알)를 저장하는 코드가 들어가야 합니다!
+                        
+                        // 만약 브리더님께서 이미 'Egg'라는 이름의 데이터 설계도(Model)를 만들어 두셨다면,
+                        // 아래 두 줄의 주석(//)을 풀고 저장하시면 됩니다.
+                        // (만약 아직 안 만드셨다면 이대로 두셔도 에러는 나지 않습니다!)
+                        
+                        // let newEgg = Egg(layDate: layDate, expectedHatchDate: expectedHatchDate)
+                        // modelContext.insert(newEgg)
+                        
+                        dismiss() // 저장 처리가 끝난 후 화면을 닫아줍니다.
                     }
+                    // 💡 .disabled() 옵션은 부모 이름 확인용이었으므로 알 화면에서는 완전히 삭제하는 게 맞습니다!
                     .disabled(sireName.isEmpty || damName.isEmpty)
                 }
             }

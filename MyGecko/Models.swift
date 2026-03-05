@@ -1,5 +1,6 @@
 import SwiftData
 import Foundation
+import SwiftUI
 
 enum Gender: String, Codable {
     case male = "수컷"
@@ -15,6 +16,15 @@ final class Gecko {
     var gender: Gender
     var hatchDate: Date // 🌟 핵심 1: 나이 계산을 위한 해칭일 추가!
     var profileImageData: Data? = nil
+
+    // 🧬 부모(혈통) 정보
+    var sireName: String = ""  // 🌟 새롭게 추가: 아빠 이름!
+    var sireMorph: String = ""
+    var sireImageData: Data?
+    
+    var damName: String = ""   // 🌟 새롭게 추가: 엄마 이름!
+    var damMorph: String = ""
+    var damImageData: Data?
     
     @Relationship(deleteRule: .cascade) var dailyLogs: [DailyLog]
     
@@ -122,5 +132,19 @@ final class EggRecord {
         self.layDate = layDate
         self.expectedHatchDate = expectedHatchDate
         self.status = status
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var value: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&value)
+
+        let red = Double((value >> 16) & 0xFF) / 255.0
+        let green = Double((value >> 8) & 0xFF) / 255.0
+        let blue = Double(value & 0xFF) / 255.0
+
+        self.init(red: red, green: green, blue: blue)
     }
 }
