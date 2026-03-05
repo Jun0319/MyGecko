@@ -83,8 +83,8 @@ struct MainTabView: View {
             IncubatorView()
                 .tabItem { Label("인큐베이터", systemImage: "tray.2.fill") }
             
-            StatisticsView()
-                .tabItem { Label("통계", systemImage: "chart.pie.fill") }
+            DataManagementView()
+                .tabItem { Label("데이터", systemImage: "tablecells.fill") }
             
             SettingsView()
                 .tabItem { Label("설정", systemImage: "gearshape.fill") }
@@ -403,102 +403,7 @@ struct IncubatorView: View {
         }
     }
 }
-// 📌 5. 통계 화면 (개체별 체중 성장 차트 📈)
-struct StatisticsView: View {
-    // 저장된 모든 개체를 불러옵니다.
-    @Query(sort: \Gecko.name) private var geckos: [Gecko]
-    
-    // 현재 그래프를 보고 있는 개체를 기억하는 변수
-    @State private var selectedGecko: Gecko?
-    
-    var body: some View {
-        NavigationStack {
-            VStack {
-                if geckos.isEmpty {
-                    Text("등록된 개체가 없습니다.")
-                        .foregroundColor(.secondary)
-                } else {
-                    // 🌟 1. 상단 개체 선택 픽커 (드롭다운)
-                    Picker("개체 선택", selection: $selectedGecko) {
-                        Text("개체를 선택하세요").tag(nil as Gecko?)
-                        ForEach(geckos) { gecko in
-                            Text(gecko.name).tag(gecko as Gecko?)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .padding()
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    
-                    if let gecko = selectedGecko {
-                        // 체중이 0보다 큰 일지만 날짜순으로 모아줍니다.
-                        let logs = gecko.dailyLogs.filter { $0.emptyWeight > 0 }.sorted { $0.date < $1.date }
-                        
-                        if logs.isEmpty {
-                            Spacer()
-                            Text("체중 기록이 없습니다.\n사육 일지에서 공복 체중을 기록해 주세요!")
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        } else {
-                            // 🌟 2. 하얀색 카드 위에 그려지는 성장 그래프
-                            VStack(alignment: .leading) {
-                                Text("\(gecko.name)의 성장 그래프 📈")
-                                    .font(.headline)
-                                    .padding(.bottom, 10)
-                                
-                                // 애플의 마법! Chart 블록 하나면 끝납니다.
-                                Chart {
-                                    ForEach(logs, id: \.self) { log in
-                                        // 꺾은선 그리기
-                                        LineMark(
-                                            x: .value("날짜", log.date),
-                                            y: .value("체중(g)", log.emptyWeight)
-                                        )
-                                        .foregroundStyle(Color.indigo)
-                                        .interpolationMethod(.monotone) // 선을 부드러운 곡선으로 만들어줌!
-                                        
-                                        // 날짜마다 동그란 점 찍기
-                                        PointMark(
-                                            x: .value("날짜", log.date),
-                                            y: .value("체중(g)", log.emptyWeight)
-                                        )
-                                        .foregroundStyle(Color.indigo)
-                                    }
-                                }
-                                .frame(height: 300) // 그래프 높이
-                                .chartYAxis {
-                                    AxisMarks(position: .leading) // Y축 숫자(무게)를 왼쪽에 표시
-                                }
-                            }
-                            .padding()
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
-                            .cornerRadius(16)
-                            .padding()
-                            
-                            Spacer()
-                        }
-                    } else {
-                        Spacer()
-                        Text("위에서 그래프를 볼 개체를 선택해 주세요.")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                    }
-                }
-            }
-            .background(Color(UIColor.systemGroupedBackground)) // 토스 느낌의 회색 배경
-            .navigationTitle("성장 통계 📈")
-            .onAppear {
-                // 화면에 들어왔을 때 자동으로 첫 번째 개체를 선택해 줌
-                if selectedGecko == nil, let first = geckos.first {
-                    selectedGecko = first
-                }
-            }
-        }
-    }
-}
+// 📌 5. 통계 화면 (개체별 체중 성장 차트 📈) -> 데이터 앱(Data Management)으로 개편되어 분리됨
 struct SettingsView: View {
     var body: some View {
         NavigationStack {
