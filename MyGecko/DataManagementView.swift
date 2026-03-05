@@ -1,12 +1,12 @@
 import SwiftUI
 import SwiftData
-
+import Charts
 struct DataManagementView: View {
     @Query(sort: \Gecko.name) private var geckos: [Gecko]
     @State private var selectedGecko: Gecko?
     
     // AI Insight
-    @State private var aiInsightMessage: String = "AI Insight 분석 버튼을 눌러 개체의 건강 상태를 확인해보세요."
+    @State private var aiInsightMessage: String = "개체를 선택하면 AI가 데이터를 분석해 드립니다."
     @State private var isAnalyzing: Bool = false
     
     var body: some View {
@@ -49,24 +49,10 @@ struct DataManagementView: View {
                                     .bold()
                                     .foregroundColor(.purple)
                                 Spacer()
-                                Button(action: {
-                                    analyzeData(for: gecko)
-                                }) {
-                                    if isAnalyzing {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Text("분석하기")
-                                            .font(.caption)
-                                            .bold()
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 5)
-                                            .background(Color.purple.opacity(0.1))
-                                            .foregroundColor(.purple)
-                                            .cornerRadius(6)
-                                    }
+                                if isAnalyzing {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
                                 }
-                                .disabled(isAnalyzing)
                             }
                             Text(aiInsightMessage)
                                 .font(.footnote)
@@ -78,6 +64,12 @@ struct DataManagementView: View {
                         .cornerRadius(12)
                         .padding(.horizontal)
                         .padding(.bottom, 10)
+                        
+                        // 2-1. Chart Carousel 영역
+                        let sortedLogs = gecko.dailyLogs.sorted { $0.date < $1.date }
+                        if !sortedLogs.isEmpty {
+                            DailyLogCarouselView(logs: sortedLogs)
+                        }
                     }
                     
                     // 3. Notion Style Data Table
@@ -128,7 +120,14 @@ struct DataManagementView: View {
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("데이터 📊")
+            .navigationTitle("데이터")
+            .onChange(of: selectedGecko) { _, newValue in
+                if let gecko = newValue {
+                    analyzeData(for: gecko)
+                } else {
+                    aiInsightMessage = "개체를 선택하면 AI가 데이터를 분석해 드립니다."
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     if let csvURL = CSVExportManager.shared.generateCSV(for: geckos) {
@@ -196,5 +195,118 @@ struct TableCellView: View {
             .background(isHeader ? Color(UIColor.systemGray5) : Color.clear)
             .lineLimit(1)
             .truncationMode(.tail)
+    }
+}
+
+// 개별 차트 컨테이너 뷰
+struct ChartViewContainer<Content: View>: View {
+    let title: String
+    let color: Color
+    let content: Content
+    
+    init(title: String, color: Color, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.color = color
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(color)
+                .bold()
+                .padding(.bottom, 5)
+            
+            content
+                .padding(.vertical, 5)
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+}
+
+// 추출된 Carousel View (컴파일러 복잡도 완화)
+struct DailyLogCarouselView: View {
+    let logs: [DailyLog]
+    
+    var body: some View {
+        TabView {
+            // 차트 1: 먹이 급여량
+            ChartViewContainer(title: "먹이 급여량 (ml)", color: .green) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("급여량", log.foodAmount)
+                        )
+                        .foregroundStyle(.green)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                }
+            }
+            
+            // 차트 2: 공복 체중
+            ChartViewContainer(title: "공복 체중 (g)", color: .blue) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("공복 체중", log.emptyWeight)
+                        )
+                        .foregroundStyle(.blue)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                }
+            }
+            
+            // 차트 3: 식후 체중
+            ChartViewContainer(title: "식후 체중 (g)", color: .orange) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("식후 체중", log.afterWeight)
+                        )
+                        .foregroundStyle(.orange)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                }
+            }
+            
+            // 차트 4: 온/습도
+            ChartViewContainer(title: "온도(℃) / 습도(%)", color: .red) {
+                VStack(spacing: 5) {
+                    Chart {
+                        ForEach(logs, id: \.id) { log in
+                            LineMark(
+                                x: .value("날짜", log.date),
+                                y: .value("온도", log.amTemp)
+                            )
+                            .foregroundStyle(.red)
+                            .symbol(BasicChartSymbolShape.circle)
+                            
+                            LineMark(
+                                x: .value("날짜", log.date),
+                                y: .value("습도", log.amHumid)
+                            )
+                            .foregroundStyle(.cyan)
+                            .symbol(BasicChartSymbolShape.square)
+                        }
+                    }
+                    HStack {
+                        Circle().fill(.red).frame(width: 8, height: 8)
+                        Text("온도").font(.caption).foregroundColor(.secondary)
+                        Rectangle().fill(.cyan).frame(width: 8, height: 8)
+                        Text("습도").font(.caption).foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .frame(height: 250)
+        .padding(.bottom, 10)
     }
 }
