@@ -30,31 +30,22 @@ struct DataManagementView: View {
                         }
                         .pickerStyle(.menu)
                         .padding(8)
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(8)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
                         
                         Spacer()
                         
-                        // 월 선택기 (Month Picker)
-                        HStack(spacing: 12) {
-                            Button(action: { changeMonth(by: -1) }) {
-                                Image(systemName: "chevron.left")
-                                    .foregroundColor(.primary)
-                            }
-                            
-                            Text(monthYearString(from: selectedMonth))
-                                .font(.subheadline)
-                                .bold()
-                                .frame(minWidth: 80)
-                            
-                            Button(action: { changeMonth(by: 1) }) {
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.primary)
-                            }
-                        }
+                        // 월 선택기 (Compact DatePicker)
+                        DatePicker(
+                            "월 선택",
+                            selection: $selectedMonth,
+                            displayedComponents: [.date]
+                        )
+                        .datePickerStyle(.compact)
+                        .labelsHidden()
                         .padding(8)
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(8)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
                     }
                     .padding(.horizontal)
                     .padding(.top, 10)
@@ -68,6 +59,7 @@ struct DataManagementView: View {
                                     .foregroundColor(.purple)
                                 Text("AI Insight")
                                     .font(.subheadline)
+                                    .fontDesign(.rounded)
                                     .bold()
                                     .foregroundColor(.purple)
                                 Spacer()
@@ -78,12 +70,21 @@ struct DataManagementView: View {
                             }
                             Text(aiInsightMessage)
                                 .font(.footnote)
+                                .fontDesign(.rounded)
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .padding()
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(12)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .strokeBorder(
+                                    LinearGradient(gradient: Gradient(colors: [.purple, .pink, .blue]), startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    lineWidth: 1.5
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
                         .padding(.horizontal)
                         .padding(.bottom, 10)
                         
@@ -109,7 +110,9 @@ struct DataManagementView: View {
                                 TableCellView(text: "배변", isHeader: true, width: 60)
                                 TableCellView(text: "탈피상태", isHeader: true, width: 100)
                             }
-                            .border(Color.gray.opacity(0.3), width: 1)
+                            
+                            Divider()
+                                .padding(.bottom, 4)
                             
                             // Table Rows
                             let filteredLogs = getAllLogs()
@@ -120,19 +123,22 @@ struct DataManagementView: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                             } else {
                                 ForEach(filteredLogs, id: \.log.id) { item in
-                                    HStack(spacing: 0) {
-                                        TableCellView(text: item.log.date.formatted(date: .numeric, time: .omitted), width: 100)
-                                        TableCellView(text: item.gecko.name, width: 100)
-                                        TableCellView(text: item.log.foodType, width: 150)
-                                        TableCellView(text: "\(String(format: "%.1f", item.log.foodAmount)) ml", width: 80)
-                                        TableCellView(text: "\(String(format: "%.1f", item.log.emptyWeight)) g", width: 80)
-                                        TableCellView(text: "\(String(format: "%.1f", item.log.afterWeight)) g", width: 80)
-                                        TableCellView(text: "\(String(format: "%.1f", item.log.amTemp))℃ / \(String(format: "%.0f", item.log.amHumid))%", width: 100)
-                                        TableCellView(text: item.log.defecation ? "O" : "X", width: 60)
-                                        TableCellView(text: item.log.sheddingStatus, width: 100)
+                                    VStack(spacing: 0) {
+                                        HStack(spacing: 0) {
+                                            TableCellView(text: item.log.date.formatted(date: .numeric, time: .omitted), width: 100)
+                                            TableCellView(text: item.gecko.name, width: 100)
+                                            TableCellView(text: item.log.foodType, width: 150)
+                                            TableCellView(text: "\(String(format: "%.1f", item.log.foodAmount)) ml", width: 80)
+                                            TableCellView(text: "\(String(format: "%.1f", item.log.emptyWeight)) g", width: 80)
+                                            TableCellView(text: "\(String(format: "%.1f", item.log.afterWeight)) g", width: 80)
+                                            TableCellView(text: "\(String(format: "%.1f", item.log.amTemp))℃ / \(String(format: "%.0f", item.log.amHumid))%", width: 100)
+                                            TableCellView(text: item.log.defecation ? "O" : "X", width: 60)
+                                            TableCellView(text: item.log.sheddingStatus, width: 100)
+                                        }
+                                        .background(Color.clear)
+                                        
+                                        Divider()
                                     }
-                                    .background(Color(UIColor.systemBackground))
-                                    .border(Color.gray.opacity(0.2), width: 0.5)
                                 }
                             }
                         }
@@ -234,11 +240,12 @@ struct TableCellView: View {
     var body: some View {
         Text(text)
             .font(isHeader ? .subheadline.bold() : .footnote)
+            .fontDesign(.rounded)
             .foregroundColor(isHeader ? .primary : .secondary)
             .frame(width: width, alignment: .leading)
             .padding(.vertical, 12)
             .padding(.horizontal, 8)
-            .background(isHeader ? Color(UIColor.systemGray5) : Color.clear)
+            .background(Color.clear)
             .lineLimit(1)
             .truncationMode(.tail)
     }
@@ -260,16 +267,19 @@ struct ChartViewContainer<Content: View>: View {
         VStack(alignment: .leading) {
             Text(title)
                 .font(.subheadline)
+                .fontDesign(.rounded)
                 .foregroundColor(color)
                 .bold()
                 .padding(.bottom, 5)
             
             content
                 .padding(.vertical, 5)
+                .padding(.bottom, 24) // Extra padding to avoid indicator overlap
         }
         .padding()
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(12)
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
         .padding(.horizontal)
     }
 }
@@ -463,8 +473,8 @@ struct DailyLogCarouselView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
-        .frame(height: 250)
-        .padding(.bottom, 10)
+        .frame(height: 290)
+        .padding(.bottom, 15)
     }
 }
 
