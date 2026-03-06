@@ -1,12 +1,13 @@
 import SwiftUI
 import SwiftData
-
+import Charts
 struct DataManagementView: View {
     @Query(sort: \Gecko.name) private var geckos: [Gecko]
     @State private var selectedGecko: Gecko?
+    @State private var selectedMonth: Date = Date()
     
     // AI Insight
-    @State private var aiInsightMessage: String = "AI Insight 분석 버튼을 눌러 개체의 건강 상태를 확인해보세요."
+    @State private var aiInsightMessage: String = "개체를 선택하면 AI가 데이터를 분석해 드립니다."
     @State private var isAnalyzing: Bool = false
     
     var body: some View {
@@ -19,7 +20,7 @@ struct DataManagementView: View {
                         .padding()
                     Spacer()
                 } else {
-                    // 1. 개체 선택 (가로 스크롤로 필터 버튼 배치 가능)
+                    // 1. 개체 선택 및 월 선택
                     HStack {
                         Picker("개체 선택", selection: $selectedGecko) {
                             Text("모든 개체 보기").tag(nil as Gecko?)
@@ -33,6 +34,27 @@ struct DataManagementView: View {
                         .cornerRadius(8)
                         
                         Spacer()
+                        
+                        // 월 선택기 (Month Picker)
+                        HStack(spacing: 12) {
+                            Button(action: { changeMonth(by: -1) }) {
+                                Image(systemName: "chevron.left")
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Text(monthYearString(from: selectedMonth))
+                                .font(.subheadline)
+                                .bold()
+                                .frame(minWidth: 80)
+                            
+                            Button(action: { changeMonth(by: 1) }) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .padding(8)
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                        .cornerRadius(8)
                     }
                     .padding(.horizontal)
                     .padding(.top, 10)
@@ -49,24 +71,10 @@ struct DataManagementView: View {
                                     .bold()
                                     .foregroundColor(.purple)
                                 Spacer()
-                                Button(action: {
-                                    analyzeData(for: gecko)
-                                }) {
-                                    if isAnalyzing {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Text("분석하기")
-                                            .font(.caption)
-                                            .bold()
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 5)
-                                            .background(Color.purple.opacity(0.1))
-                                            .foregroundColor(.purple)
-                                            .cornerRadius(6)
-                                    }
+                                if isAnalyzing {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
                                 }
-                                .disabled(isAnalyzing)
                             }
                             Text(aiInsightMessage)
                                 .font(.footnote)
@@ -78,6 +86,12 @@ struct DataManagementView: View {
                         .cornerRadius(12)
                         .padding(.horizontal)
                         .padding(.bottom, 10)
+                        
+                        // 2-1. Chart Carousel 영역
+                        let sortedLogs = gecko.dailyLogs
+                            .filter { isSameMonth(date1: $0.date, date2: selectedMonth) }
+                            .sorted { $0.date < $1.date }
+                        DailyLogCarouselView(logs: sortedLogs, selectedMonth: selectedMonth)
                     }
                     
                     // 3. Notion Style Data Table
@@ -128,7 +142,14 @@ struct DataManagementView: View {
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("데이터 📊")
+            .navigationTitle("데이터")
+            .onChange(of: selectedGecko) { _, newValue in
+                if let gecko = newValue {
+                    analyzeData(for: gecko)
+                } else {
+                    aiInsightMessage = "개체를 선택하면 AI가 데이터를 분석해 드립니다."
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     if let csvURL = CSVExportManager.shared.generateCSV(for: geckos) {
@@ -153,11 +174,35 @@ struct DataManagementView: View {
         
         for gecko in targetGeckos {
             for log in gecko.dailyLogs {
-                allLogItems.append((gecko, log))
+                if isSameMonth(date1: log.date, date2: selectedMonth) {
+                    allLogItems.append((gecko, log))
+                }
             }
         }
         
         return allLogItems.sorted { $0.1.date > $1.1.date }
+    }
+    
+    // 월 증감 로직
+    private func changeMonth(by value: Int) {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
+            selectedMonth = newMonth
+        }
+    }
+    
+    // 연/월 텍스트 표기
+    private func monthYearString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy년 M월"
+        return formatter.string(from: date)
+    }
+    
+    // 두 날짜가 같은 달인지 확인
+    private func isSameMonth(date1: Date, date2: Date) -> Bool {
+        let calendar = Calendar.current
+        let components1 = calendar.dateComponents([.year, .month], from: date1)
+        let components2 = calendar.dateComponents([.year, .month], from: date2)
+        return components1.year == components2.year && components1.month == components2.month
     }
     
     private func analyzeData(for gecko: Gecko) {
@@ -198,3 +243,228 @@ struct TableCellView: View {
             .truncationMode(.tail)
     }
 }
+
+// 개별 차트 컨테이너 뷰
+struct ChartViewContainer<Content: View>: View {
+    let title: String
+    let color: Color
+    let content: Content
+    
+    init(title: String, color: Color, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.color = color
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(color)
+                .bold()
+                .padding(.bottom, 5)
+            
+            content
+                .padding(.vertical, 5)
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+}
+
+// 추출된 Carousel View (컴파일러 복잡도 완화)
+struct DailyLogCarouselView: View {
+    let logs: [DailyLog]
+    let selectedMonth: Date
+    @State private var selectedDate: Date?
+    
+    // 차트 x축 범위 설정을 위한 해당 월의 첫 날과 마지막 날 계산
+    var dateDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth)) ?? selectedMonth
+        let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth) ?? selectedMonth
+        let startDate = calendar.startOfDay(for: startOfMonth)
+        let endDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: endOfMonth) ?? endOfMonth
+        return startDate...endDate
+    }
+    
+    // 툴팁 위치에 가장 가까운(1.5일 이내) 로그 탐색
+    private func nearestLog(to date: Date) -> DailyLog? {
+        logs.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) })
+    }
+    
+    var body: some View {
+        TabView {
+            // 차트 1: 먹이 급여량
+            ChartViewContainer(title: "먹이 급여량 (ml)", color: .green) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("급여량", log.foodAmount)
+                        )
+                        .foregroundStyle(.green)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                    
+                    if let selectedDate {
+                        RuleMark(x: .value("선택된 날짜", selectedDate))
+                            .foregroundStyle(Color.gray.opacity(0.5))
+                            .annotation(position: .top) {
+                                if let nearest = nearestLog(to: selectedDate), abs(nearest.date.timeIntervalSince(selectedDate)) < 86400 * 1.5 {
+                                    VStack(spacing: 2) {
+                                        Text("\(nearest.date, format: .dateTime.month().day())")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(String(format: "%.1f ml", nearest.foodAmount))
+                                            .font(.caption.bold())
+                                            .foregroundColor(.green)
+                                    }
+                                    .padding(6)
+                                    .background(Color(UIColor.systemBackground).opacity(0.9))
+                                    .cornerRadius(6)
+                                    .shadow(color: .black.opacity(0.15), radius: 3)
+                                }
+                            }
+                    }
+                }
+                .chartXScale(domain: dateDomain)
+                .chartXSelection(value: $selectedDate)
+            }
+            
+            // 차트 2: 공복 체중
+            ChartViewContainer(title: "공복 체중 (g)", color: .blue) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("공복 체중", log.emptyWeight)
+                        )
+                        .foregroundStyle(.blue)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                    
+                    if let selectedDate {
+                        RuleMark(x: .value("선택된 날짜", selectedDate))
+                            .foregroundStyle(Color.gray.opacity(0.5))
+                            .annotation(position: .top) {
+                                if let nearest = nearestLog(to: selectedDate), abs(nearest.date.timeIntervalSince(selectedDate)) < 86400 * 1.5 {
+                                    VStack(spacing: 2) {
+                                        Text("\(nearest.date, format: .dateTime.month().day())")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(String(format: "%.1f g", nearest.emptyWeight))
+                                            .font(.caption.bold())
+                                            .foregroundColor(.blue)
+                                    }
+                                    .padding(6)
+                                    .background(Color(UIColor.systemBackground).opacity(0.9))
+                                    .cornerRadius(6)
+                                    .shadow(color: .black.opacity(0.15), radius: 3)
+                                }
+                            }
+                    }
+                }
+                .chartXScale(domain: dateDomain)
+                .chartXSelection(value: $selectedDate)
+            }
+            
+            // 차트 3: 식후 체중
+            ChartViewContainer(title: "식후 체중 (g)", color: .orange) {
+                Chart {
+                    ForEach(logs, id: \.id) { log in
+                        LineMark(
+                            x: .value("날짜", log.date),
+                            y: .value("식후 체중", log.afterWeight)
+                        )
+                        .foregroundStyle(.orange)
+                        .symbol(BasicChartSymbolShape.circle)
+                    }
+                    
+                    if let selectedDate {
+                        RuleMark(x: .value("선택된 날짜", selectedDate))
+                            .foregroundStyle(Color.gray.opacity(0.5))
+                            .annotation(position: .top) {
+                                if let nearest = nearestLog(to: selectedDate), abs(nearest.date.timeIntervalSince(selectedDate)) < 86400 * 1.5 {
+                                    VStack(spacing: 2) {
+                                        Text("\(nearest.date, format: .dateTime.month().day())")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(String(format: "%.1f g", nearest.afterWeight))
+                                            .font(.caption.bold())
+                                            .foregroundColor(.orange)
+                                    }
+                                    .padding(6)
+                                    .background(Color(UIColor.systemBackground).opacity(0.9))
+                                    .cornerRadius(6)
+                                    .shadow(color: .black.opacity(0.15), radius: 3)
+                                }
+                            }
+                    }
+                }
+                .chartXScale(domain: dateDomain)
+                .chartXSelection(value: $selectedDate)
+            }
+            
+            // 차트 4: 온/습도
+            ChartViewContainer(title: "온도(℃) / 습도(%)", color: .red) {
+                VStack(spacing: 5) {
+                    Chart {
+                        ForEach(logs, id: \.id) { log in
+                            LineMark(
+                                x: .value("날짜", log.date),
+                                y: .value("온도", log.amTemp)
+                            )
+                            .foregroundStyle(.red)
+                            .symbol(BasicChartSymbolShape.circle)
+                            
+                            LineMark(
+                                x: .value("날짜", log.date),
+                                y: .value("습도", log.amHumid)
+                            )
+                            .foregroundStyle(.cyan)
+                            .symbol(BasicChartSymbolShape.square)
+                        }
+                        
+                        if let selectedDate {
+                            RuleMark(x: .value("선택된 날짜", selectedDate))
+                                .foregroundStyle(Color.gray.opacity(0.5))
+                                .annotation(position: .top) {
+                                    if let nearest = nearestLog(to: selectedDate), abs(nearest.date.timeIntervalSince(selectedDate)) < 86400 * 1.5 {
+                                        VStack(spacing: 2) {
+                                            Text("\(nearest.date, format: .dateTime.month().day())")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Text(String(format: "%.1f℃ / %.0f%%", nearest.amTemp, nearest.amHumid))
+                                                .font(.caption.bold())
+                                                .foregroundColor(.primary)
+                                        }
+                                        .padding(6)
+                                        .background(Color(UIColor.systemBackground).opacity(0.9))
+                                        .cornerRadius(6)
+                                        .shadow(color: .black.opacity(0.15), radius: 3)
+                                    }
+                                }
+                        }
+                    }
+                    .chartXScale(domain: dateDomain)
+                    .chartXSelection(value: $selectedDate)
+                    
+                    HStack {
+                        Circle().fill(.red).frame(width: 8, height: 8)
+                        Text("온도").font(.caption).foregroundColor(.secondary)
+                        Rectangle().fill(.cyan).frame(width: 8, height: 8)
+                        Text("습도").font(.caption).foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .indexViewStyle(.page(backgroundDisplayMode: .always))
+        .frame(height: 250)
+        .padding(.bottom, 10)
+    }
+}
+
