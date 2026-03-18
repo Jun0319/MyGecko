@@ -1,0 +1,8 @@
+build/
+build_output.log
+build_output_2.log
+.DS_Store
+*.xcuserstate
+*.xcbuilddata
+*.pcm
+*.log
